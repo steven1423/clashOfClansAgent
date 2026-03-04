@@ -1,94 +1,93 @@
-# 🏰 Clash of Clans — Reinforcement Learning Attack Agent
+# Clash of Clans - Reinforcement Learning Attack Agent
 
-An autonomous **Reinforcement Learning** agent that learns to attack Clash of Clans bases using a **Deep Q-Network (DQN)**. The agent controls the **Royal Champion** hero, learning optimal spell placement and target prioritization to destroy the Town Hall and Air Defenses on a procedurally generated TH15 base.
+This is a deep reinforcement learning agent that learns how to attack Clash of Clans bases. It controls the Royal Champion hero on a procedurally generated TH15 base, figuring out where to cast Invisibility Spells and which buildings to target (Town Hall first, then Air Defenses) through trial and error with a Deep Q-Network.
 
 ![Battle Replay Demo](media/battle_replay.gif)
 
 ---
 
-## 📋 Overview
+## What This Does
 
-This project simulates a simplified Clash of Clans attack scenario as a grid-based environment and trains a DQN agent to play it. The agent must learn:
+The project builds a simplified CoC attack as a grid-based RL environment and trains a DQN to play it. The agent learns:
 
-- **When and where** to cast Invisibility Spells to protect the Royal Champion
-- **Target prioritization** — Town Hall first, then Air Defenses, then other buildings
-- **Spatial reasoning** on a 44×44 tile grid with 11 building categories
+- Where and when to drop Invisibility Spells to keep the Royal Champion alive
+- Target priority — Town Hall > Air Defenses > everything else
+- Spatial reasoning across a 44x44 tile grid with 11 building categories
 
-The entire pipeline — environment, neural network, training loop, and visualization — runs in a single Jupyter notebook.
+Everything runs in a single Jupyter notebook: the environment, the network, the training loop, and the replay visualization.
 
 ---
 
-## 🧠 How It Works
+## How It Works
 
 ### Environment (`CoCEnv`)
 
-- **Grid**: 44×44 tiles representing a procedurally generated TH15 base
-- **Observation**: 3-channel input (Building IDs, Value Grid, Invisibility Timer)
-- **Actions**: 1,937 discrete actions — 1 "wait" action + 1,936 grid locations for spell casting
-- **Physics**: Simulates Royal Champion movement, attacking, HP, incoming damage, and invisibility mechanics
-- **Reward shaping**: +1000 for Town Hall, +300 for Air Defenses, penalties for damage taken and bad targeting
+The environment simulates a CoC attack on a 44x44 grid. Each tile can hold part of a building (Town Hall, Air Defense, Cannon, walls, etc.). The agent sees 3 channels stacked together:
 
-### Neural Network Architecture
+1. **Building ID grid** — what's placed where
+2. **Value grid** — strategic importance of each tile
+3. **Invisibility timer grid** — remaining spell duration per tile
 
-A **4-layer Deep Q-Network (DQN)** with convolutional feature extraction:
+The action space is 1,937 discrete choices: 1 wait action + 1,936 grid cells where the agent can cast an Invisibility Spell. The Royal Champion moves and attacks automatically based on a built-in target priority system — the agent only controls spell placement.
+
+Rewards are shaped to teach priority:
+- +1000 for destroying the Town Hall
+- +300 per Air Defense killed
+- Penalties for taking damage and targeting low-priority buildings
+
+### DQN Architecture
+
+4-layer convolutional network:
 
 ```
-Input (3 × 44 × 44)
-    ↓
-Conv2d(3 → 32, 3×3) + ReLU
-    ↓
-Conv2d(32 → 64, 3×3) + ReLU
-    ↓
-Conv2d(64 → 64, 3×3) + ReLU
-    ↓
-Flatten → FC(123,904 → 512) + ReLU
-    ↓
-FC(512 → 1,937)  [Q-values for each action]
+Input (3 x 44 x 44)
+  -> Conv2d(3, 32, 3x3) + ReLU
+  -> Conv2d(32, 64, 3x3) + ReLU
+  -> Conv2d(64, 64, 3x3) + ReLU
+  -> Flatten -> FC(123904, 512) + ReLU
+  -> FC(512, 1937)   # Q-value per action
 ```
 
-### Training
+### Training Details
 
-- **Algorithm**: Deep Q-Learning with Experience Replay and Target Network
-- **Replay Buffer**: Stores transitions `(s, a, r, s', done)` for off-policy learning
-- **Epsilon-Greedy**: Decaying exploration from ε=1.0 → ε=0.01
-- **Multiple training runs**: Progressively harder configurations (`hard_v2`, `pro`, `master`, `th15`)
-- **Checkpoints saved** every 100–500 episodes
+Standard DQN setup with experience replay and a target network. Epsilon decays from 1.0 down to 0.01 over training. The agent was trained in stages with increasing difficulty:
+
+| Tier | Episodes | What Changes |
+|---|---|---|
+| `hard_v2` | 2,000 | Fewer defenses, learning core mechanics |
+| `pro` | 1,500 | More defenses, tighter reward signals |
+| `master` | 1,500 | Full defense roster |
+| `th15` | 5,700+ | Complete TH15 base, ran for 10+ hours |
+
+Checkpoints were saved every 100-500 episodes throughout.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 clashOfClansAgent/
-├── README.md                           # This file
-├── .gitignore                          # Excludes checkpoints & temp files
+├── README.md
+├── .gitignore
 ├── notebooks/
-│   ├── Clash_of_Clans_Agent.ipynb      # Main notebook (env, model, training, visualization)
-│   └── test.ipynb                      # Testing / experimentation notebook
+│   ├── Clash_of_Clans_Agent.ipynb    # main notebook — everything lives here
+│   └── test.ipynb                     # scratch / testing
 ├── media/
-│   └── battle_replay.gif              # Animated demo of a trained agent attacking
-└── checkpoints/                        # (gitignored) Model weights (~26 GB total)
-    ├── rc_hard_v2_*.pth                # Hard difficulty v2 checkpoints
-    ├── rc_pro_*.pth                    # Pro difficulty checkpoints
-    ├── rc_master_*.pth                 # Master difficulty checkpoints
-    └── rc_th15_*.pth                   # Full TH15 checkpoints (final model)
+│   └── battle_replay.gif             # demo of trained agent attacking
+└── checkpoints/                       # not in repo (gitignored, ~26 GB)
+    ├── rc_hard_v2_*.pth
+    ├── rc_pro_*.pth
+    ├── rc_master_*.pth
+    └── rc_th15_*.pth
 ```
 
-> **Note:** The `checkpoints/` folder contains trained model weights (`.pth` files) totaling ~26 GB. These are excluded from the repository due to GitHub's file size limits. To use pre-trained models, you would need to train them locally.
+The `checkpoints/` folder has all the trained model weights but they total ~26 GB, so they're excluded from the repo. You'll need to train locally to generate them.
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
-### Prerequisites
-
-- Python 3.8+
-- [PyTorch](https://pytorch.org/) (with CUDA recommended for training)
-- NumPy
-- Matplotlib
-- Jupyter Notebook
-
-### Installation
+You need Python 3.8+, PyTorch (CUDA recommended), NumPy, Matplotlib, and Jupyter.
 
 ```bash
 git clone https://github.com/steven1423/clashOfClansAgent.git
@@ -96,52 +95,18 @@ cd clashOfClansAgent
 pip install torch numpy matplotlib jupyter
 ```
 
-### Running
+Then open the notebook and run through the cells:
 
-1. Open the main notebook:
-   ```bash
-   jupyter notebook notebooks/Clash_of_Clans_Agent.ipynb
-   ```
-2. Run **Cell 1** to generate and visualize a random TH15 base layout
-3. Run **Cell 2+** to initialize the DQN and start training
-4. Watch rewards improve over episodes as the agent learns to prioritize targets
+```bash
+jupyter notebook notebooks/Clash_of_Clans_Agent.ipynb
+```
+
+Cell 1 generates and visualizes a random TH15 base. The following cells set up the DQN and kick off training.
 
 ---
 
-## 🎮 Key Features
+## Built With
 
-| Feature | Description |
-|---|---|
-| **Procedural Base Generation** | Random TH15 layouts with proper building placement rules |
-| **Multi-Channel Observation** | Building IDs + strategic values + invisibility state |
-| **Reward Shaping** | Hierarchical rewards guide the agent to prioritize high-value targets |
-| **Progressive Difficulty** | Train from easy → hard → pro → master → full TH15 |
-| **Battle Replay** | Animated GIF visualization of the trained agent's attack |
-
----
-
-## 📊 Training Results
-
-The agent was trained across multiple difficulty tiers with thousands of episodes per tier. Training progresses from simpler environments to the full TH15 simulation with all defenses active.
-
-| Tier | Episodes | Description |
-|---|---|---|
-| `hard_v2` | 2,000 | Reduced defenses, core mechanics |
-| `pro` | 1,500 | More defenses, tighter rewards |
-| `master` | 1,500 | Full defense roster |
-| `th15` | 5,700+ | Complete TH15 base, 10+ hour training |
-
----
-
-## 🛠️ Technologies Used
-
-- **PyTorch** — Neural network and training
-- **NumPy** — Grid environment and state representation
-- **Matplotlib** — Base visualization and training plots
-- **Jupyter Notebook** — Interactive development environment
-
----
-
-## 📄 License
-
-This project is for educational and research purposes.
+- **PyTorch** for the neural network and training loop
+- **NumPy** for the grid environment and state representation
+- **Matplotlib** for base visualization and training plots

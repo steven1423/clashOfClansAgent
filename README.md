@@ -210,6 +210,3 @@ src/coc/
   sprites.py    the wiki sprite manifest
   vision.py     everything in the screen-reading section
 ```
-
-Built with claude. The failures stayed in the readme on purpose — they were more
-educational than the wins.

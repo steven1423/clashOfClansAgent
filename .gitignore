@@ -14,3 +14,13 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Training runs and logs (checkpoints are hundreds of MB)
+runs/
+logs/
+
+# Large binaries kept out of git; regenerate with the pipeline or re-download
+vision_data/*.pt
+vision_data/real_sample_01.png
+media/*.gif
+_to_delete/
